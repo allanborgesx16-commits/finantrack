@@ -17,14 +17,26 @@ jobs:
       - name: Localizar Pasta do Projeto
         id: find_dir
         run: |
-          PKG_PATH=$(find . -maxdepth 3 -name "package.json" | head -n 1)
+          echo "=== ARQUIVOS NO REPOSITÓRIO ==="
+          find . -maxdepth 3
+
+          # Se você subiu o arquivo .zip, ele descompacta automaticamente
+          ZIP_FILE=$(find . -name "*.zip" | head -n 1)
+          if [ -n "$ZIP_FILE" ]; then
+            echo "Arquivo ZIP detectado ($ZIP_FILE). Descompactando..."
+            unzip -q -o "$ZIP_FILE"
+          fi
+
+          # Procura o package.json em qualquer pasta
+          PKG_PATH=$(find . -name "package.json" -not -path "*/node_modules/*" | head -n 1)
           if [ -z "$PKG_PATH" ]; then
-            echo "Erro: package.json não encontrado"
+            echo "ERRO: O arquivo package.json não está no repositório nem dentro de um zip."
             exit 1
           fi
+
           WORK_DIR=$(dirname "$PKG_PATH")
           echo "work_dir=$WORK_DIR" >> $GITHUB_OUTPUT
-          echo "Pasta encontrada: $WORK_DIR"
+          echo "Pasta do projeto identificada com sucesso: $WORK_DIR"
 
       - name: Configurar Node.js
         uses: actions/setup-node@v4
