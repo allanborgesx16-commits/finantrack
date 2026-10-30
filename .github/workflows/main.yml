@@ -14,6 +14,18 @@ jobs:
       - name: Baixar Código
         uses: actions/checkout@v4
 
+      - name: Localizar Pasta do Projeto
+        id: find_dir
+        run: |
+          PKG_PATH=$(find . -maxdepth 3 -name "package.json" | head -n 1)
+          if [ -z "$PKG_PATH" ]; then
+            echo "Erro: package.json não encontrado"
+            exit 1
+          fi
+          WORK_DIR=$(dirname "$PKG_PATH")
+          echo "work_dir=$WORK_DIR" >> $GITHUB_OUTPUT
+          echo "Pasta encontrada: $WORK_DIR"
+
       - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
@@ -26,19 +38,22 @@ jobs:
           java-version: 17
 
       - name: Instalar Dependencias
+        working-directory: ${{ steps.find_dir.outputs.work_dir }}
         run: npm install
 
       - name: Gerar Build do Web App
+        working-directory: ${{ steps.find_dir.outputs.work_dir }}
         run: npm run build
 
       - name: Inicializar Capacitor Android
+        working-directory: ${{ steps.find_dir.outputs.work_dir }}
         run: |
           npx cap add android || true
           npx cap sync android
 
       - name: Compilar APK
+        working-directory: ${{ steps.find_dir.outputs.work_dir }}/android
         run: |
-          cd android
           chmod +x ./gradlew
           ./gradlew assembleDebug
 
@@ -46,4 +61,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: FinanTrack-App-Android.apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: ${{ steps.find_dir.outputs.work_dir }}/android/app/build/outputs/apk/debug/app-debug.apk
