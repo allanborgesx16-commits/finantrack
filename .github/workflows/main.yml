@@ -1,76 +1,46 @@
-name: Compilar APK Android Gratuito
-
+name: Testar e compilar FinanTrack Android
 on:
   push:
-    branches: [ main, master ]
+    branches: [main]
   workflow_dispatch:
-
+permissions:
+  contents: read
 jobs:
   build:
-    name: Build Android APK
     runs-on: ubuntu-latest
-
+    timeout-minutes: 20
     steps:
-      - name: Baixar Código
-        uses: actions/checkout@v4
-
-      - name: Localizar Pasta do Projeto
-        id: find_dir
-        run: |
-          echo "=== ARQUIVOS NO REPOSITÓRIO ==="
-          find . -maxdepth 3
-
-          # Se você subiu o arquivo .zip, ele descompacta automaticamente
-          ZIP_FILE=$(find . -name "*.zip" | head -n 1)
-          if [ -n "$ZIP_FILE" ]; then
-            echo "Arquivo ZIP detectado ($ZIP_FILE). Descompactando..."
-            unzip -q -o "$ZIP_FILE"
-          fi
-
-          # Procura o package.json em qualquer pasta
-          PKG_PATH=$(find . -name "package.json" -not -path "*/node_modules/*" | head -n 1)
-          if [ -z "$PKG_PATH" ]; then
-            echo "ERRO: O arquivo package.json não está no repositório nem dentro de um zip."
-            exit 1
-          fi
-
-          WORK_DIR=$(dirname "$PKG_PATH")
-          echo "work_dir=$WORK_DIR" >> $GITHUB_OUTPUT
-          echo "Pasta do projeto identificada com sucesso: $WORK_DIR"
-
-      - name: Configurar Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: 20
-
-      - name: Configurar Java 17
-        uses: actions/setup-java@v4
+          node-version: '24'
+          cache: npm
+      - uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
-          java-version: 17
-
-      - name: Instalar Dependencias
-        working-directory: ${{ steps.find_dir.outputs.work_dir }}
-        run: npm install
-
-      - name: Gerar Build do Web App
-        working-directory: ${{ steps.find_dir.outputs.work_dir }}
+          distribution: temurin
+          java-version: '21'
+      - name: Instalar dependências verificadas
+        run: npm ci
+      - name: Testar valores e cálculos
+        run: npm test
+      - name: Compilar aplicativo web
         run: npm run build
-
-      - name: Inicializar Capacitor Android
-        working-directory: ${{ steps.find_dir.outputs.work_dir }}
+      - name: Preparar Android
         run: |
-          npx cap add android || true
+          npx cap add android
           npx cap sync android
-
+          node scripts/android-config.mjs
+      - name: Instalar plataforma Android
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
       - name: Compilar APK
-        working-directory: ${{ steps.find_dir.outputs.work_dir }}/android
+        working-directory: android
         run: |
-          chmod +x ./gradlew
-          ./gradlew assembleDebug
-
-      - name: Publicar APK para Download
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+      - name: Disponibilizar APK
         uses: actions/upload-artifact@v4
         with:
-          name: FinanTrack-App-Android.apk
-          path: ${{ steps.find_dir.outputs.work_dir }}/android/app/build/outputs/apk/debug/app-debug.apk
+          name: FinanTrack-2.0-Android
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 30

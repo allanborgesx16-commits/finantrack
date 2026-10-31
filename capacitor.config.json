@@ -1,0 +1,11 @@
+{
+  "appId": "com.finantrack.app",
+  "appName": "FinanTrack",
+  "webDir": "dist",
+  "plugins": {
+    "SystemBars": {"insetsHandling":"native", "style":"LIGHT", "initialViewportFitValueHint":"cover"}
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}
