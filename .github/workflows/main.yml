@@ -30,6 +30,8 @@ jobs:
           npx cap add android
           npx cap sync android
           node scripts/android-config.mjs
+      - name: Configurar ferramentas Android
+        uses: android-actions/setup-android@v4
       - name: Instalar plataforma Android
         run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
       - name: Compilar APK
